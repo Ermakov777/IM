@@ -13,7 +13,6 @@
       background: rgba(0,0,0,.6); color:#fff; padding: 8px 12px;
       border-radius: 10px;
     }
-    /* Кнопка меню (выезжающая панель) */
     .menu-btn {
       position: absolute; z-index: 1200; left: 10px; top: 10px;
       width: 36px; height: 36px; border-radius: 10px; border: none;
@@ -21,8 +20,6 @@
       display: flex; align-items:center; justify-content:center; cursor:pointer;
     }
     .menu-btn:active { transform: scale(.98); }
-
-    /* Левая выезжающая панель */
     .drawer {
       position: absolute; z-index: 1300; top: 0; left: 0; height: 100%;
       width: 300px; max-width: 80vw; background: #111; color:#fff;
@@ -33,7 +30,7 @@
     .drawer.open { transform: translateX(0); }
     .drawer header { padding: 12px 14px; font-weight: 700; background: #191919; }
     .drawer .section { padding: 10px 14px; border-top: 1px solid #222; }
-    .drawer .section h3 { margin: 0 0 8px; font-size: 15px; opacity: .9; }
+    .drawer .section h3 { margin: 0 0 8px; font-size: 15px; opacity: .9; display:flex; gap:8px; align-items:center;}
     .drawer .list { display: grid; gap: 6px; }
     .drawer .item {
       background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 10px;
@@ -43,39 +40,40 @@
     .drawer .item .t { font-weight: 600; font-size: 14px; }
     .drawer .item .d { font-size: 12px; opacity:.75; }
 
-    /* Крестик по центру */
     .crosshair {
       position: absolute; z-index: 1000; left: 50%; top: 50%;
       transform: translate(-50%, -50%); pointer-events: none;
       width: 34px; height: 34px; opacity: .9;
     }
-    /* Панель координат снизу */
     .coords {
       position: absolute; z-index: 1000; left: 50%; bottom: 10px;
       transform: translateX(-50%);
       background: rgba(0,0,0,.65); color: #fff; padding: 8px 12px;
       border-radius: 10px; font-size: 14px; line-height: 1;
     }
+    /* стиль попапа */
+    .popup-wrap { max-width: 320px; }
+    .popup-num { font-weight: 700; margin-bottom:4px; }
+    .popup-pre { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .badge { font-size:12px; opacity:.8; background:#eee; color:#333; padding:1px 6px; border-radius:8px; }
   </style>
 </head>
 <body>
   <button class="menu-btn" id="menuBtn" aria-label="Открыть меню">☰</button>
   <div class="header">ПРИП/ИМ/НАВИП — все точки</div>
 
-  <!-- Левая панель -->
   <aside class="drawer" id="drawer" aria-hidden="true">
     <header>Разделы</header>
     <div class="section">
-      <h3>ПРИП Таганрог <span id="cnt-taganrog"></span></h3>
+      <h3>ПРИП Таганрог <span id="cnt-taganrog" class="badge"></span></h3>
       <div class="list" id="list-taganrog"></div>
     </div>
     <div class="section">
-      <h3>ПРИП Новороссийск <span id="cnt-novoros"></span></h3>
+      <h3>ПРИП Новороссийск <span id="cnt-novoros" class="badge"></span></h3>
       <div class="list" id="list-novoros"></div>
     </div>
   </aside>
 
-  <!-- Крестик по центру -->
   <svg class="crosshair" viewBox="0 0 34 34" aria-hidden="true">
     <circle cx="17" cy="17" r="1.6" fill="#888" />
     <line x1="17" y1="0"  x2="17" y2="12" stroke="#888" stroke-width="2"/>
@@ -84,14 +82,12 @@
     <line x1="22" y1="17" x2="34" y2="17" stroke="#888" stroke-width="2"/>
   </svg>
 
-  <!-- Панель координат -->
   <div class="coords" id="coords">lat: –, lng: –</div>
 
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // ===== Карта =====
     const map = L.map('map');
     map.setView([55.751244, 37.618423], 11);
 
@@ -100,8 +96,7 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // ===== Загрузка ПРИПов =====
-    let markers = [];          // [{marker, prip, category}]
+    let markers = [];
     const byId = new Map();
 
     async function loadPrips() {
@@ -114,26 +109,30 @@
     }
 
     function classifyPrip(p) {
-      const hay = ((p.title||'') + ' ' + (p.desc||'')).toUpperCase();
+      const hay = ((p.section)||((p.title||'') + ' ' + (p.desc||''))).toUpperCase();
       if (hay.includes('ПРИП ТАГАНРОГ')) return 'taganrog';
       if (hay.includes('ПРИП НОВОРОССИЙСК')) return 'novoros';
       return 'other';
     }
 
     function renderPrips(prips) {
-      // удалить старые
       markers.forEach(m => map.removeLayer(m.marker));
       markers = [];
-
-      const arr = Array.isArray(prips) ? prips : [];
       const leafs = [];
 
-      arr.forEach(p => {
+      (Array.isArray(prips)?prips:[]).forEach(p => {
         if (typeof p.lat !== 'number' || typeof p.lng !== 'number') return;
-        const m = L.marker([p.lat, p.lng]).addTo(map)
-          .bindPopup(`<b>${escapeHtml(p.title || 'Без названия')}</b><br>${escapeHtml(p.desc || '')}`);
-        const cat = classifyPrip(p);
-        markers.push({ marker: m, prip: p, category: cat });
+
+        const numStr = (p.number!=null) ? `№${p.number}` : '';
+        const sec = p.section || (classifyPrip(p)==='taganrog'?'ПРИП Таганрог': (classifyPrip(p)==='novoros'?'ПРИП Новороссийск':''));
+        const popupHtml = `
+          <div class="popup-wrap">
+            <div class="popup-num">${sec?escapeHtml(sec)+' ':''}${numStr}</div>
+            <pre class="popup-pre">${escapeHtml(p.fullText || ((p.title||'') + '\\n' + (p.desc||'')))}</pre>
+          </div>`.trim();
+
+        const m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(popupHtml);
+        markers.push({ marker: m, prip: p });
         byId.set(p.id || `${p.lat},${p.lng}`, m);
         leafs.push(m);
       });
@@ -150,7 +149,7 @@
       }[c]));
     }
 
-    // ===== Панель слева =====
+    // Drawer
     const drawer = document.getElementById('drawer');
     const btn = document.getElementById('menuBtn');
     btn.addEventListener('click', () => {
@@ -166,15 +165,18 @@
       const cntNov = document.getElementById('cnt-novoros');
       listTag.innerHTML = ''; listNov.innerHTML = '';
 
-      const tag = prips.filter(p => classifyPrip(p)==='taganrog');
-      const nov = prips.filter(p => classifyPrip(p)==='novoros');
+      const tag = prips.filter(p => classifyPrip(p)==='taganrog')
+                       .sort((a,b)=> (a.number??1e9) - (b.number??1e9));
+      const nov = prips.filter(p => classifyPrip(p)==='novoros')
+                       .sort((a,b)=> (a.number??1e9) - (b.number??1e9));
       cntTag.textContent = tag.length ? `(${tag.length})` : '';
       cntNov.textContent = nov.length ? `(${nov.length})` : '';
 
       const makeItem = (p) => {
         const div = document.createElement('div');
         div.className = 'item';
-        div.innerHTML = `<div class="t">${escapeHtml(p.title||'Без названия')}</div>
+        const n = (p.number!=null) ? `№${p.number}` : '';
+        div.innerHTML = `<div class="t">${n} — ${escapeHtml(p.title||'Без названия')}</div>
                          <div class="d">${escapeHtml(p.desc||'')}</div>`;
         div.onclick = () => {
           map.setView([p.lat, p.lng], Math.max(map.getZoom(), 12), { animate: true });
@@ -188,19 +190,16 @@
       nov.forEach(p => listNov.appendChild(makeItem(p)));
     }
 
-    // ===== Морской формат координат внизу =====
+    // Морской формат координат
     const coordsEl = document.getElementById('coords');
-
     function toDMM(val, isLat){
       const hemi = isLat ? (val>=0 ? 'N' : 'S') : (val>=0 ? 'E' : 'W');
       const abs = Math.abs(val);
       const deg = Math.floor(abs);
-      const min = (abs - deg) * 60;                 // десятичные минуты
-      // формат с запятой как разделителем десятых минут
+      const min = (abs - deg) * 60;
       const minStr = min.toFixed(2).replace('.', ',');
       return `${deg}°${minStr}' ${hemi}`;
     }
-
     function updateCenterCoords() {
       const c = map.getCenter();
       coordsEl.textContent = `${toDMM(c.lat, true)},  ${toDMM(c.lng, false)}  |  zoom: ${map.getZoom()}`;
@@ -209,7 +208,6 @@
     map.on('zoom', updateCenterCoords);
     map.whenReady(() => { updateCenterCoords(); });
 
-    // ===== Старт =====
     loadPrips();
     setInterval(loadPrips, 60000);
   </script>
