@@ -7,27 +7,46 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; }
-    .header { 
-      position: absolute; 
-      z-index: 1000; 
-      left: 10px; 
-      top: 10px; 
-      background: rgba(0,0,0,.6); 
-      color:#fff; 
-      padding: 8px 12px; 
-      border-radius: 10px; 
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; 
+    .header {
+      position: absolute; z-index: 1000; left: 10px; top: 10px;
+      background: rgba(0,0,0,.6); color:#fff; padding: 8px 12px;
+      border-radius: 10px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    }
+    /* Крестик по центру экрана */
+    .crosshair {
+      position: absolute; z-index: 1000; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none; /* не перехватывает клики/скролл */
+      width: 34px; height: 34px; opacity: .9;
+    }
+    /* Панель координат снизу */
+    .coords {
+      position: absolute; z-index: 1000; left: 50%; bottom: 10px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.65); color: #fff; padding: 8px 12px;
+      border-radius: 10px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font-size: 14px; line-height: 1;
     }
   </style>
 </head>
 <body>
   <div class="header">ПРИП/ИМ/НАВИП — все точки</div>
+  <!-- Крестик (SVG) фиксирован по центру экрана -->
+  <svg class="crosshair" viewBox="0 0 34 34" aria-hidden="true">
+    <circle cx="17" cy="17" r="1.6" fill="#888" />
+    <line x1="17" y1="0"  x2="17" y2="12" stroke="#888" stroke-width="2"/>
+    <line x1="17" y1="22" x2="17" y2="34" stroke="#888" stroke-width="2"/>
+    <line x1="0"  y1="17" x2="12" y2="17" stroke="#888" stroke-width="2"/>
+    <line x1="22" y1="17" x2="34" y2="17" stroke="#888" stroke-width="2"/>
+  </svg>
+  <!-- Панель координат -->
+  <div class="coords" id="coords">lat: –, lng: –</div>
+
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const map = L.map('map');
-    // Москва по умолчанию, если нет гео
     map.setView([55.751244, 37.618423], 11);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -35,21 +54,18 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
+    // ===== Загрузка точек из локального файла в корне =====
     async function loadPrips() {
       try {
-        const url = "./prips.json";   // <-- загружаем локальный файл из корня
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await fetch('./prips.json', { cache: 'no-store' });
         const prips = await res.json();
         renderPrips(prips);
-      } catch (e) { 
-        console.error('Не удалось загрузить prips.json', e); 
-      }
+      } catch (e) { console.error('Не удалось загрузить prips.json', e); }
     }
 
     function renderPrips(prips) {
       if (!Array.isArray(prips)) return;
       const markers = [];
-
       prips.forEach(p => {
         if (typeof p.lat !== 'number' || typeof p.lng !== 'number') return;
         const m = L.marker([p.lat, p.lng])
@@ -57,7 +73,6 @@
           .bindPopup(`<b>${escapeHtml(p.title || 'Без названия')}</b><br>${escapeHtml(p.desc || '')}`);
         markers.push(m);
       });
-
       if (markers.length) {
         const group = L.featureGroup(markers);
         map.fitBounds(group.getBounds().pad(0.2));
@@ -70,8 +85,18 @@
       }[c]));
     }
 
+    // ===== Динамические координаты внизу (центр карты) =====
+    const coordsEl = document.getElementById('coords');
+    function updateCenterCoords() {
+      const c = map.getCenter();
+      coordsEl.textContent = `lat: ${c.lat.toFixed(6)}, lng: ${c.lng.toFixed(6)}  |  zoom: ${map.getZoom()}`;
+    }
+    map.on('move', updateCenterCoords);
+    map.on('zoom', updateCenterCoords);
+    map.whenReady(() => { updateCenterCoords(); });
+
+    // Авто-обновление данных раз в минуту
     loadPrips();
-    // Авто-обновление раз в минуту
     setInterval(loadPrips, 60000);
   </script>
 </body>
