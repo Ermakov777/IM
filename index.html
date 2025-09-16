@@ -7,7 +7,17 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; }
-    .header { position: absolute; z-index: 1000; left: 10px; top: 10px; background: rgba(0,0,0,.6); color:#fff; padding: 8px 12px; border-radius: 10px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    .header { 
+      position: absolute; 
+      z-index: 1000; 
+      left: 10px; 
+      top: 10px; 
+      background: rgba(0,0,0,.6); 
+      color:#fff; 
+      padding: 8px 12px; 
+      border-radius: 10px; 
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; 
+    }
   </style>
 </head>
 <body>
@@ -27,11 +37,13 @@
 
     async function loadPrips() {
       try {
-        // относительный путь: /site/index.html → ../data/prips.json
-        const res = await fetch('../data/prips.json', { cache: 'no-store' });
+        const url = "./prips.json";   // <-- загружаем локальный файл из корня
+        const res = await fetch(url, { cache: "no-store" });
         const prips = await res.json();
         renderPrips(prips);
-      } catch (e) { console.error('Не удалось загрузить prips.json', e); }
+      } catch (e) { 
+        console.error('Не удалось загрузить prips.json', e); 
+      }
     }
 
     function renderPrips(prips) {
@@ -53,12 +65,13 @@
     }
 
     function escapeHtml(s){
-      return String(s).replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",
-      ">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      return String(s).replace(/[&<>\"']/g, (c)=>({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+      }[c]));
     }
 
     loadPrips();
-    // Авто-обновление раз в минуту (можно убрать)
+    // Авто-обновление раз в минуту
     setInterval(loadPrips, 60000);
   </script>
 </body>
